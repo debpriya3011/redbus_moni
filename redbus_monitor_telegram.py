@@ -183,6 +183,34 @@ def get_help_message():
     )
 
 
+def get_current_buses_summary():
+    try:
+        with open(STATE_FILE, encoding="utf-8") as f:
+            state = json.load(f)
+    except Exception:
+        state = {}
+
+    if not state:
+        return "  No matching buses stored in state yet."
+
+    summary_lines = []
+    for date, buses in state.items():
+        if not buses:
+            continue
+        summary_lines.append(f"📅 {date}:")
+        for bus in buses.values():
+            name = bus.get("serviceName") or bus.get("travelsName") or "Bus"
+            dep = bus.get("departureTime", "").split()[-1] or bus.get("departureTime", "")
+            seats = bus.get("availableSeats", "N/A")
+            total = bus.get("totalSeats", "")
+            seats_str = f"{seats}/{total}" if total else f"{seats}"
+            fares = bus.get("fareList", [])
+            fare_str = f"₹{fares[0]}" if fares else "N/A"
+            summary_lines.append(f"  • {dep} - {name} ({seats_str} seats, {fare_str})")
+
+    return "\n".join(summary_lines) if summary_lines else "  No matching buses stored in state yet."
+
+
 def process_telegram_commands(config):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("Telegram bot token or chat ID not set. Skipping Telegram command check.")
@@ -206,6 +234,7 @@ def process_telegram_commands(config):
     print(f"Telegram updates fetched: {len(updates)}")
 
     expected_chat_id = str(TELEGRAM_CHAT_ID).strip().strip('"').strip("'")
+    seen_commands_in_batch = set()
 
     for update in updates:
         config["offset"] = update["update_id"]
@@ -231,16 +260,23 @@ def process_telegram_commands(config):
         args = parts[1:]
         reply = None
 
+        cmd_key = (command, " ".join(args))
+        if cmd_key in seen_commands_in_batch:
+            print(f"Skipping duplicate command in same batch: {text}")
+            continue
+        seen_commands_in_batch.add(cmd_key)
+
         if command in ("/start", "/help"):
             reply = get_help_message()
 
-        elif command == "/status":
+        elif command in ("/status", "/check"):
             dates_str = "\n".join(f"  • {d}" for d in config.get("dates", [])) or "  None"
+            buses_str = get_current_buses_summary()
             reply = (
                 f"📊 Current RedBus Monitor Status:\n\n"
                 f"📅 Monitored Dates:\n{dates_str}\n\n"
                 f"⏰ Departure Window:\n  {config.get('start', START_TIME)} to {config.get('end', END_TIME)}\n\n"
-                f"Route: {FROM_CITY} ➡️ {TO_CITY}"
+                f"🚌 Currently Detected Matching Buses:\n{buses_str}"
             )
 
         elif command == "/dates":
