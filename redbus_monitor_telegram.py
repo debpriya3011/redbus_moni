@@ -25,6 +25,7 @@ FROM_CITY = "75494"
 TO_CITY = "94698"
 FROM_CITY_NAME = "kolkata"
 TO_CITY_NAME = "bankura"
+ROUTE_DISPLAY = f"{FROM_CITY_NAME.title()} ➡️ {TO_CITY_NAME.title()}"
 
 
 def generate_booking_url(journey_date, operator_id=None):
@@ -357,10 +358,11 @@ def process_telegram_commands(config):
             dates_str = "\n".join(f"  • {d}" for d in config.get("dates", [])) or "  None"
             buses_str = get_current_buses_summary()
             reply = (
-                f"📊 Current RedBus Monitor Status:\n\n"
-                f"📅 Monitored Dates:\n{dates_str}\n\n"
-                f"⏰ Departure Window:\n  {config.get('start', START_TIME)} to {config.get('end', END_TIME)}\n\n"
-                f"🚌 Currently Detected Matching Buses:\n{buses_str}"
+                f"📊 <b>Current RedBus Monitor Status:</b>\n\n"
+                f"📍 <b>Route:</b> {ROUTE_DISPLAY}\n"
+                f"📅 <b>Monitored Dates:</b>\n{dates_str}\n\n"
+                f"⏰ <b>Departure Window:</b>\n  {config.get('start', START_TIME)} to {config.get('end', END_TIME)}\n\n"
+                f"🚌 <b>Currently Detected Matching Buses:</b>\n{buses_str}"
             )
 
         elif command == "/dates":
@@ -487,11 +489,11 @@ def send_telegram_notification(current_state, changed_buses=None):
         return False
 
     lines = [
-        "🚌 REDBUS MONITOR UPDATE",
+        "🚌 <b>REDBUS MONITOR UPDATE</b>",
         "",
-        f"📅 Monitored Dates:\n  " + ", ".join(DATES),
-        f"⏰ Departure Window: {START_TIME} - {END_TIME}",
-        f"📍 Route: {FROM_CITY} ➡️ {TO_CITY}",
+        f"📍 <b>Route:</b> {ROUTE_DISPLAY}",
+        f"📅 <b>Monitored Dates:</b>\n  " + ", ".join(DATES),
+        f"⏰ <b>Departure Window:</b> {START_TIME} - {END_TIME}",
         "",
     ]
 
