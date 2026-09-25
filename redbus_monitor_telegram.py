@@ -91,7 +91,10 @@ def telegram_request(method, **kwargs):
             timeout=30,
             **kwargs,
         )
-        return response.json() if response.status_code == 200 else {}
+        result = response.json()
+        if response.status_code != 200 or not result.get("ok"):
+            print(f"Telegram {method} failed:", response.status_code, result)
+        return result
     except Exception as e:
         print("Telegram error:", repr(e))
         return {}
