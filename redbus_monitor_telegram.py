@@ -87,6 +87,13 @@ def telegram_request(method, **kwargs):
         return {}
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}"
+        if "json" in kwargs:
+            payload = kwargs.pop("json")
+            kwargs["data"] = json.dumps(payload)
+            headers = kwargs.get("headers", {})
+            headers["Content-Type"] = "application/json"
+            kwargs["headers"] = headers
+
         request = session.get if method == "getUpdates" else session.post
         response = request(
             url,
@@ -280,7 +287,9 @@ def process_telegram_commands(config):
         args = parts[1:]
         reply = None
 
-        if "status" in lower_text or "buses" in lower_text:
+        if raw_cmd.startswith("/"):
+            command = raw_cmd
+        elif "status" in lower_text or "buses" in lower_text:
             command = "/status"
             args = []
         elif "view dates" in lower_text:
@@ -289,7 +298,7 @@ def process_telegram_commands(config):
         elif "departure window" in lower_text:
             command = "/time"
             args = []
-        elif "help" in lower_text or "guide" in lower_text or raw_cmd == "/start":
+        elif "help" in lower_text or "guide" in lower_text or raw_cmd == "start":
             command = "/help"
             args = []
         else:
@@ -376,14 +385,13 @@ def process_telegram_commands(config):
             replies.append(reply)
 
     if replies:
-        # If there are success messages, filter out intermediate "Please specify..." prompts
         has_success = any("✅" in r or "📊" in r for r in replies)
         if has_success:
             replies = [r for r in replies if not r.startswith("ℹ️ Please specify")]
 
-        combined_reply = "\n\n───────────────\n\n".join(replies)
-        ok = send_telegram_message(expected_chat_id, combined_reply)
-        print(f"Sent consolidated reply to chat {expected_chat_id} (success={ok})")
+        for rep in replies:
+            ok = send_telegram_message(expected_chat_id, rep)
+            print(f"Sent reply to chat {expected_chat_id} (success={ok})")
 
     save_config(config)
     return config
