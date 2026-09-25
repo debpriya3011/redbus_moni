@@ -454,117 +454,67 @@ def initialize_session():
 # TELEGRAM NOTIFICATION
 # ============================================================
 
-def send_telegram_notification(available_buses):
-
+def send_telegram_notification(current_state, changed_buses=None):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-
         print()
-        print("Telegram notification skipped.")
-        print(
-            "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID "
-            "environment variables."
-        )
-
-        return False
-
-    if not available_buses:
-
-        # No currently returned matching buses.
+        print("Telegram notification skipped: credentials not set.")
         return False
 
     lines = [
-        "🚌 REDBUS BUS ALERT",
+        "🚌 REDBUS MONITOR UPDATE",
         "",
-        f"Route: {FROM_CITY} → {TO_CITY}",
-        f"Departure window: {START_TIME} - {END_TIME}",
+        f"📅 Monitored Dates:\n  " + ", ".join(DATES),
+        f"⏰ Departure Window: {START_TIME} - {END_TIME}",
+        f"📍 Route: {FROM_CITY} ➡️ {TO_CITY}",
         "",
     ]
 
-    total_buses = sum(
-        len(buses)
-        for buses in available_buses.values()
-    )
-
-    lines.append(
-        f"Currently available matching buses: {total_buses}"
-    )
-    lines.append("")
-
-    for journey_date, buses in available_buses.items():
-
-        if not buses:
-            continue
-
-        lines.append(f"📅 {journey_date}")
-
-        for bus in buses.values():
-
-            service_name = (
-                bus.get("serviceName")
-                or bus.get("travelsName")
-                or "Unknown service"
-            )
-
-            departure = bus.get(
-                "departureTime",
-                "Unknown"
-            )
-
-            arrival = bus.get(
-                "arrivalTime",
-                "Unknown"
-            )
-
-            fare_list = bus.get(
-                "fareList",
-                []
-            )
-
-            if fare_list:
-                fare = ", ".join(
-                    f"₹{x}" for x in fare_list
+    has_any_buses = False
+    for journey_date in DATES:
+        buses = current_state.get(journey_date, {})
+        if buses:
+            has_any_buses = True
+            lines.append(f"📅 {journey_date}:")
+            for bus in buses.values():
+                service_name = (
+                    bus.get("serviceName")
+                    or bus.get("travelsName")
+                    or "Unknown service"
                 )
-            else:
-                fare = "N/A"
+                dep = bus.get("departureTime", "Unknown")
+                arr = bus.get("arrivalTime", "Unknown")
+                fare_list = bus.get("fareList", [])
+                fare = f"₹{fare_list[0]}" if fare_list else "N/A"
+                avail = bus.get("availableSeats", "N/A")
+                total = bus.get("totalSeats", "")
+                seat_str = f"{avail}/{total}" if total else f"{avail}"
 
-            available = bus.get(
-                "availableSeats",
-                "N/A"
-            )
+                lines.extend([
+                    f"  🚌 {service_name}",
+                    f"  🕐 {dep} ➡️ {arr}",
+                    f"  💺 Seats: {seat_str} | 💰 Fare: {fare}",
+                    "",
+                ])
 
-            total = bus.get(
-                "totalSeats",
-                "N/A"
-            )
-
-            lines.extend([
-                f"🚌 {service_name}",
-                f"🕐 {departure} → {arrival}",
-                f"💺 Seats: {available}/{total}",
-                f"💰 Fare: {fare}",
-                "",
-            ])
+    if not has_any_buses:
+        lines.append("ℹ️ No matching buses found in this departure window currently.")
 
     message = "\n".join(lines)
 
-    try:
-        payload = {
-            "chat_id": str(TELEGRAM_CHAT_ID).strip(),
-            "text": message,
-            "reply_markup": KEYBOARD_MARKUP,
-        }
-        result = telegram_request("sendMessage", json=payload)
-        if result.get("ok"):
-            print()
-            print("Telegram notification sent successfully.")
-            return True
+    payload = {
+        "chat_id": str(TELEGRAM_CHAT_ID).strip(),
+        "text": message,
+        "reply_markup": KEYBOARD_MARKUP,
+    }
+    result = telegram_request("sendMessage", json=payload)
+    if result.get("ok"):
+        print()
+        print("Telegram hourly summary notification sent successfully.")
+        return True
+    else:
         print()
         print("Telegram notification failed:", result)
-    except Exception as e:
-        print()
-        print("Telegram notification error:", repr(e))
-
-    return False
+        return False
 
 
 # ============================================================
@@ -1339,18 +1289,10 @@ def main():
     # Telegram notification
     # --------------------------------------------------------
 
-    if available_buses:
-
-        send_telegram_notification(
-            available_buses
-        )
-
-    else:
-
-        print()
-        print(
-            "No matching buses currently available."
-        )
+    send_telegram_notification(
+        previous_state,
+        available_buses
+    )
 
     # --------------------------------------------------------
     # Save state
