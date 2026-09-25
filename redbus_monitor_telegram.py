@@ -132,11 +132,11 @@ def send_telegram_message(chat_id, text, reply_markup=None):
     if reply_markup is None:
         reply_markup = KEYBOARD_MARKUP
     payload = {
-        "chat_id": chat_id,
+        "chat_id": str(chat_id).strip(),
         "text": text,
-        "reply_markup": json.dumps(reply_markup)
+        "reply_markup": reply_markup
     }
-    return telegram_request("sendMessage", data=payload).get("ok", False)
+    return telegram_request("sendMessage", json=payload).get("ok", False)
 
 
 def parse_single_date(value):
@@ -525,40 +525,22 @@ def send_telegram_notification(available_buses):
 
     message = "\n".join(lines)
 
-    telegram_url = (
-        "https://api.telegram.org/bot"
-        f"{TELEGRAM_BOT_TOKEN}/sendMessage"
-    )
-
     try:
-
-        response = session.post(telegram_url, data={"chat_id": TELEGRAM_CHAT_ID, "text": message}, timeout=30)
-
-        if response.status_code == 200:
-
-            result = response.json()
-
-            if result.get("ok"):
-
-                print()
-                print("Telegram notification sent successfully.")
-
-                return True
-
+        payload = {
+            "chat_id": str(TELEGRAM_CHAT_ID).strip(),
+            "text": message,
+            "reply_markup": KEYBOARD_MARKUP,
+        }
+        result = telegram_request("sendMessage", json=payload)
+        if result.get("ok"):
+            print()
+            print("Telegram notification sent successfully.")
+            return True
         print()
-        print(
-            "Telegram notification failed:",
-            response.status_code,
-            response.text[:500]
-        )
-
+        print("Telegram notification failed:", result)
     except Exception as e:
-
         print()
-        print(
-            "Telegram notification error:",
-            repr(e)
-        )
+        print("Telegram notification error:", repr(e))
 
     return False
 
