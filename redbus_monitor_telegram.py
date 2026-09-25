@@ -102,28 +102,93 @@ def telegram_request(method, **kwargs):
         return {}
 
 
+def register_telegram_commands():
+    if not TELEGRAM_BOT_TOKEN:
+        return
+    commands = [
+        {"command": "status", "description": "View current dates and departure window"},
+        {"command": "dates", "description": "Set/view dates: /dates 15-Oct-2026 16-Oct-2026"},
+        {"command": "add_date", "description": "Add date(s): /add_date 17-Oct-2026"},
+        {"command": "remove_date", "description": "Remove date(s): /remove_date 15-Oct-2026"},
+        {"command": "time", "description": "Set departure time: /time 10:00 16:00"},
+        {"command": "set", "description": "Set all: /set 15-Oct-2026 10:00 16:00"},
+        {"command": "help", "description": "Show help and usage guide"},
+    ]
+    telegram_request("setMyCommands", json={"commands": commands})
+
+
 def send_telegram_message(chat_id, text):
     return telegram_request("sendMessage", data={"chat_id": chat_id, "text": text}).get("ok", False)
 
 
+def parse_single_date(value):
+    clean = value.strip()
+    formats = [
+        "%d-%b-%Y",
+        "%d-%B-%Y",
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%Y-%m-%d",
+        "%d-%b-%y",
+        "%d/%m/%y",
+        "%d %b %Y",
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(clean, fmt).strftime("%d-%b-%Y")
+        except ValueError:
+            pass
+    return None
+
+
 def valid_dates(values):
-    try:
-        dates = [datetime.strptime(value, "%d-%b-%Y").strftime("%d-%b-%Y") for value in values]
-        return dates or None
-    except ValueError:
-        return None
+    res = []
+    for value in values:
+        for item in value.replace(",", " ").split():
+            parsed = parse_single_date(item)
+            if not parsed:
+                return None
+            if parsed not in res:
+                res.append(parsed)
+    return res or None
 
 
 def valid_time(value):
-    try:
-        return datetime.strptime(value, "%H:%M").strftime("%H:%M")
-    except ValueError:
-        return None
+    clean = value.strip().upper()
+    formats = ["%H:%M", "%H:%M:%S", "%I:%M%p", "%I:%M %p", "%I%p"]
+    for fmt in formats:
+        try:
+            return datetime.strptime(clean, fmt).strftime("%H:%M")
+        except ValueError:
+            pass
+    return None
+
+
+def get_help_message():
+    return (
+        "🤖 RedBus Monitor Commands:\n\n"
+        "📊 /status - View currently monitored dates & time\n"
+        "📅 /dates <dates...> - Replace monitored dates\n"
+        "   Example: /dates 15-Oct-2026 16-Oct-2026\n"
+        "➕ /add_date <date...> - Add new date(s)\n"
+        "   Example: /add_date 24-Oct-2026\n"
+        "➖ /remove_date <date...> - Remove date(s)\n"
+        "   Example: /remove_date 15-Oct-2026\n"
+        "⏰ /time <start> <end> - Set departure window\n"
+        "   Example: /time 10:00 16:00\n"
+        "⚙️ /set <dates...> <start> <end> - Set dates + time\n"
+        "   Example: /set 15-Oct-2026 16-Oct-2026 10:00 16:00\n"
+        "ℹ️ /help - Show this command list\n\n"
+        "Note: Commands are processed on each 5-min monitor run."
+    )
 
 
 def process_telegram_commands(config):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return config
+
+    # Register bot menu commands so they show up in Telegram UI autocomplete
+    register_telegram_commands()
 
     response = telegram_request(
         "getUpdates",
@@ -143,38 +208,85 @@ def process_telegram_commands(config):
         if chat_id != TELEGRAM_CHAT_ID:
             continue
         parts = message.get("text", "").strip().split()
-        command = parts[0].split("@", 1)[0].lower() if parts else ""
+        if not parts:
+            continue
+        command = parts[0].split("@", 1)[0].lower()
         args = parts[1:]
         reply = None
-        if command == "/dates":
-            dates = valid_dates(args) if args else config["dates"]
-            if args and dates:
-                config["dates"] = dates
-                reply = "Dates updated: " + ", ".join(dates)
-            elif args:
-                reply = "Use dates like: /dates 15-Oct-2026 16-Oct-2026"
+
+        if command in ("/start", "/help"):
+            reply = get_help_message()
+
+        elif command == "/status":
+            dates_str = "\n".join(f"  • {d}" for d in config.get("dates", [])) or "  None"
+            reply = (
+                f"📊 Current RedBus Monitor Status:\n\n"
+                f"📅 Monitored Dates:\n{dates_str}\n\n"
+                f"⏰ Departure Window:\n  {config.get('start', START_TIME)} to {config.get('end', END_TIME)}\n\n"
+                f"Route: {FROM_CITY} ➡️ {TO_CITY}"
+            )
+
+        elif command == "/dates":
+            if args:
+                dates = valid_dates(args)
+                if dates:
+                    config["dates"] = dates
+                    reply = "✅ Monitored dates updated:\n" + "\n".join(f"  • {d}" for d in dates)
+                else:
+                    reply = "❌ Invalid date format. Use format like:\n/dates 15-Oct-2026 16-Oct-2026"
             else:
-                reply = "Dates: " + ", ".join(config["dates"])
+                dates_str = "\n".join(f"  • {d}" for d in config.get("dates", []))
+                reply = f"📅 Current monitored dates:\n{dates_str}\n\nTo update, send:\n/dates 15-Oct-2026 16-Oct-2026"
+
+        elif command == "/add_date":
+            if args:
+                new_dates = valid_dates(args)
+                if new_dates:
+                    current_dates = config.get("dates", [])
+                    for d in new_dates:
+                        if d not in current_dates:
+                            current_dates.append(d)
+                    config["dates"] = current_dates
+                    reply = "✅ Date(s) added! Current list:\n" + "\n".join(f"  • {d}" for d in current_dates)
+                else:
+                    reply = "❌ Invalid date format. Example:\n/add_date 24-Oct-2026"
+            else:
+                reply = "ℹ️ Please specify a date to add. Example:\n/add_date 24-Oct-2026"
+
+        elif command == "/remove_date":
+            if args:
+                target_dates = valid_dates(args)
+                if target_dates:
+                    current_dates = [d for d in config.get("dates", []) if d not in target_dates]
+                    config["dates"] = current_dates
+                    reply = "✅ Date(s) removed! Remaining list:\n" + ("\n".join(f"  • {d}" for d in current_dates) or "  (No dates set)")
+                else:
+                    reply = "❌ Invalid date format. Example:\n/remove_date 15-Oct-2026"
+            else:
+                reply = "ℹ️ Please specify a date to remove. Example:\n/remove_date 15-Oct-2026"
+
         elif command == "/time":
             if len(args) == 2 and valid_time(args[0]) and valid_time(args[1]):
-                config["start"], config["end"] = args
-                reply = f"Time updated: {args[0]} - {args[1]}"
+                config["start"] = valid_time(args[0])
+                config["end"] = valid_time(args[1])
+                reply = f"✅ Departure window updated: {config['start']} to {config['end']}"
+            elif not args:
+                reply = f"⏰ Current departure window: {config.get('start', START_TIME)} to {config.get('end', END_TIME)}\n\nTo update: /time 10:00 16:00"
             else:
-                reply = "Use: /time 10:00 16:00"
+                reply = "❌ Invalid format. Use:\n/time 10:00 16:00"
+
         elif command == "/set" and len(args) >= 3:
             dates = valid_dates(args[:-2])
             start, end = valid_time(args[-2]), valid_time(args[-1])
             if dates and start and end:
                 config.update(dates=dates, start=start, end=end)
-                reply = f"Updated: {', '.join(dates)} | {start} - {end}"
+                reply = f"✅ Updated monitor configuration:\n📅 Dates: {', '.join(dates)}\n⏰ Window: {start} to {end}"
             else:
-                reply = "Use: /set 15-Oct-2026 16-Oct-2026 10:00 16:00"
-        elif command == "/status":
-            reply = f"Dates: {', '.join(config['dates'])}\nTime: {config['start']} - {config['end']}"
-        elif command == "/help":
-            reply = "/dates DATE...\n/time HH:MM HH:MM\n/set DATE... START END\n/status"
+                reply = "❌ Invalid format. Use:\n/set 15-Oct-2026 16-Oct-2026 10:00 16:00"
+
         if reply:
             send_telegram_message(chat_id, reply)
+
     save_config(config)
     return config
 
