@@ -82,30 +82,44 @@ def save_config(config):
         json.dump(config, f, indent=2)
 
 
+import urllib.request
+import urllib.parse
+
+
 def telegram_request(method, **kwargs):
     if not TELEGRAM_BOT_TOKEN:
         return {}
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}"
-        if "json" in kwargs:
-            payload = kwargs.pop("json")
-            kwargs["data"] = json.dumps(payload)
-            headers = kwargs.get("headers", {})
-            headers["Content-Type"] = "application/json"
-            kwargs["headers"] = headers
+        if "params" in kwargs and kwargs["params"]:
+            query = urllib.parse.urlencode(kwargs["params"])
+            url = f"{url}?{query}"
 
-        request = session.get if method == "getUpdates" else session.post
-        response = request(
-            url,
-            timeout=30,
-            **kwargs,
-        )
-        result = response.json()
-        if response.status_code != 200 or not result.get("ok"):
-            print(f"Telegram {method} failed:", response.status_code, result)
-        return result
+        data = None
+        headers = {}
+        if "json" in kwargs:
+            data = json.dumps(kwargs["json"]).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        elif "data" in kwargs:
+            if isinstance(kwargs["data"], dict):
+                data = json.dumps(kwargs["data"]).encode("utf-8")
+                headers["Content-Type"] = "application/json"
+            else:
+                data = str(kwargs["data"]).encode("utf-8")
+
+        req = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8")
+            return json.loads(body)
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")
+        print(f"Telegram HTTPError {e.code} for {method}: {err_body}")
+        try:
+            return json.loads(err_body)
+        except Exception:
+            return {}
     except Exception as e:
-        print("Telegram error:", repr(e))
+        print(f"Telegram error for {method}: {repr(e)}")
         return {}
 
 
