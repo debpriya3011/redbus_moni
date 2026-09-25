@@ -27,11 +27,14 @@ FROM_CITY_NAME = "kolkata"
 TO_CITY_NAME = "bankura"
 
 
-def generate_booking_url(journey_date):
-    return (
+def generate_booking_url(journey_date, operator_id=None):
+    url = (
         f"https://www.redbus.in/bus-tickets/{FROM_CITY_NAME}-to-{TO_CITY_NAME}"
         f"?fromCityId={FROM_CITY}&toCityId={TO_CITY}&doj={journey_date}"
     )
+    if operator_id:
+        url += f"&operatorId={operator_id}"
+    return url
 
 
 START_TIME = "10:00"
@@ -159,13 +162,15 @@ KEYBOARD_MARKUP = {
 }
 
 
-def send_telegram_message(chat_id, text, reply_markup=None):
+def send_telegram_message(chat_id, text, reply_markup=None, parse_mode="HTML"):
     if reply_markup is None:
         reply_markup = KEYBOARD_MARKUP
     payload = {
         "chat_id": str(chat_id).strip(),
         "text": text,
-        "reply_markup": reply_markup
+        "reply_markup": reply_markup,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
     }
     return telegram_request("sendMessage", json=payload).get("ok", False)
 
@@ -246,17 +251,27 @@ def get_current_buses_summary():
     for date, buses in state.items():
         if not buses:
             continue
-        summary_lines.append(f"📅 {date}:")
+        summary_lines.append(f"📅 <b>{date}</b>:")
         for bus in buses.values():
             name = bus.get("serviceName") or bus.get("travelsName") or "Bus"
             dep = bus.get("departureTime", "").split()[-1] or bus.get("departureTime", "")
             seats = bus.get("availableSeats", "N/A")
             total = bus.get("totalSeats", "")
+            win_seats = bus.get("availableWindowSeats")
+            aisle_seats = bus.get("availableAisleSeats")
+            
             seats_str = f"{seats}/{total}" if total else f"{seats}"
+            if win_seats is not None and aisle_seats is not None:
+                seats_str += f" (🪟 {win_seats} win, 🚶 {aisle_seats} aisle)"
+
             fares = bus.get("fareList", [])
             fare_str = f"₹{fares[0]}" if fares else "N/A"
-            summary_lines.append(f"  • {dep} - {name} ({seats_str} seats, {fare_str})")
-        summary_lines.append(f"  🔗 Book: {generate_booking_url(date)}\n")
+            op_id = bus.get("operatorId")
+            book_url = generate_booking_url(date, op_id)
+
+            summary_lines.append(f"  • {dep} - <b>{name}</b>")
+            summary_lines.append(f"    💺 Seats: {seats_str} | 💰 {fare_str}")
+            summary_lines.append(f"    👉 <a href=\"{book_url}\">Click to Book</a>\n")
 
     return "\n".join(summary_lines) if summary_lines else "  No matching buses stored in state yet."
 
@@ -485,7 +500,7 @@ def send_telegram_notification(current_state, changed_buses=None):
         buses = current_state.get(journey_date, {})
         if buses:
             has_any_buses = True
-            lines.append(f"📅 {journey_date}:")
+            lines.append(f"📅 <b>{journey_date}</b>:")
             for bus in buses.values():
                 service_name = (
                     bus.get("serviceName")
@@ -498,14 +513,23 @@ def send_telegram_notification(current_state, changed_buses=None):
                 fare = f"₹{fare_list[0]}" if fare_list else "N/A"
                 avail = bus.get("availableSeats", "N/A")
                 total = bus.get("totalSeats", "")
+                win_seats = bus.get("availableWindowSeats")
+                aisle_seats = bus.get("availableAisleSeats")
+
                 seat_str = f"{avail}/{total}" if total else f"{avail}"
+                if win_seats is not None and aisle_seats is not None:
+                    seat_str += f" (🪟 {win_seats} win, 🚶 {aisle_seats} aisle)"
+
+                op_id = bus.get("operatorId")
+                book_url = generate_booking_url(journey_date, op_id)
 
                 lines.extend([
-                    f"  🚌 {service_name}",
+                    f"  🚌 <b>{service_name}</b>",
                     f"  🕐 {dep} ➡️ {arr}",
                     f"  💺 Seats: {seat_str} | 💰 Fare: {fare}",
+                    f"  👉 <a href=\"{book_url}\">Click to Book</a>",
+                    "",
                 ])
-            lines.append(f"  🔗 Book on RedBus: {generate_booking_url(journey_date)}\n")
 
     if not has_any_buses:
         lines.append("ℹ️ No matching buses found in this departure window currently.")
@@ -516,6 +540,8 @@ def send_telegram_notification(current_state, changed_buses=None):
         "chat_id": str(TELEGRAM_CHAT_ID).strip(),
         "text": message,
         "reply_markup": KEYBOARD_MARKUP,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
     }
     result = telegram_request("sendMessage", json=payload)
     if result.get("ok"):
