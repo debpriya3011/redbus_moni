@@ -28,6 +28,7 @@ START_TIME = "10:00"
 END_TIME = "16:00"
 
 STATE_FILE = "state.json"
+CONFIG_FILE = "config.json"
 
 # Telegram credentials are read from environment variables.
 # Local Windows:
@@ -64,6 +65,106 @@ HEADERS = {
 session = requests.Session(
     impersonate="chrome"
 )
+
+
+def load_config():
+    config = {"dates": DATES, "start": START_TIME, "end": END_TIME, "offset": 0}
+    try:
+        with open(CONFIG_FILE, encoding="utf-8") as f:
+            config.update(json.load(f))
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return config
+
+
+def save_config(config):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+
+def telegram_request(method, **kwargs):
+    if not TELEGRAM_BOT_TOKEN:
+        return {}
+    try:
+        response = session.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}",
+            timeout=30,
+            **kwargs,
+        )
+        return response.json() if response.status_code == 200 else {}
+    except Exception as e:
+        print("Telegram error:", repr(e))
+        return {}
+
+
+def send_telegram_message(chat_id, text):
+    return telegram_request("sendMessage", data={"chat_id": chat_id, "text": text}).get("ok", False)
+
+
+def valid_dates(values):
+    try:
+        dates = [datetime.strptime(value, "%d-%b-%Y").strftime("%d-%b-%Y") for value in values]
+        return dates or None
+    except ValueError:
+        return None
+
+
+def valid_time(value):
+    try:
+        return datetime.strptime(value, "%H:%M").strftime("%H:%M")
+    except ValueError:
+        return None
+
+
+def process_telegram_commands(config):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return config
+
+    updates = telegram_request(
+        "getUpdates",
+        params={"offset": config.get("offset", 0) + 1, "timeout": 0},
+    ).get("result", [])
+    for update in updates:
+        config["offset"] = update["update_id"]
+        message = update.get("message", {})
+        chat_id = str(message.get("chat", {}).get("id", ""))
+        if chat_id != TELEGRAM_CHAT_ID:
+            continue
+        parts = message.get("text", "").strip().split()
+        command = parts[0].split("@", 1)[0].lower() if parts else ""
+        args = parts[1:]
+        reply = None
+        if command == "/dates":
+            dates = valid_dates(args) if args else config["dates"]
+            if args and dates:
+                config["dates"] = dates
+                reply = "Dates updated: " + ", ".join(dates)
+            elif args:
+                reply = "Use dates like: /dates 15-Oct-2026 16-Oct-2026"
+            else:
+                reply = "Dates: " + ", ".join(config["dates"])
+        elif command == "/time":
+            if len(args) == 2 and valid_time(args[0]) and valid_time(args[1]):
+                config["start"], config["end"] = args
+                reply = f"Time updated: {args[0]} - {args[1]}"
+            else:
+                reply = "Use: /time 10:00 16:00"
+        elif command == "/set" and len(args) >= 3:
+            dates = valid_dates(args[:-2])
+            start, end = valid_time(args[-2]), valid_time(args[-1])
+            if dates and start and end:
+                config.update(dates=dates, start=start, end=end)
+                reply = f"Updated: {', '.join(dates)} | {start} - {end}"
+            else:
+                reply = "Use: /set 15-Oct-2026 16-Oct-2026 10:00 16:00"
+        elif command == "/status":
+            reply = f"Dates: {', '.join(config['dates'])}\nTime: {config['start']} - {config['end']}"
+        elif command == "/help":
+            reply = "/dates DATE...\n/time HH:MM HH:MM\n/set DATE... START END\n/status"
+        if reply:
+            send_telegram_message(chat_id, reply)
+    save_config(config)
+    return config
 
 
 # ============================================================
@@ -209,14 +310,7 @@ def send_telegram_notification(available_buses):
 
     try:
 
-        response = session.post(
-            telegram_url,
-            data={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message,
-            },
-            timeout=30,
-        )
+        response = session.post(telegram_url, data={"chat_id": TELEGRAM_CHAT_ID, "text": message}, timeout=30)
 
         if response.status_code == 200:
 
@@ -951,22 +1045,18 @@ def check_date(
 
 def main():
 
+    global DATES, START_TIME, END_TIME
+
     print()
     print("=" * 80)
     print("REDBUS MONITOR")
     print("=" * 80)
 
-    print(
-        "Journey dates:",
-        ", ".join(DATES)
-    )
-
-    print(
-        "Departure window:",
-        START_TIME,
-        "to",
-        END_TIME
-    )
+    config = process_telegram_commands(load_config())
+    DATES = config["dates"]
+    START_TIME, END_TIME = config["start"], config["end"]
+    print("Journey dates:", ", ".join(DATES))
+    print("Departure window:", START_TIME, "to", END_TIME)
 
     print()
 
