@@ -185,31 +185,48 @@ def get_help_message():
 
 def process_telegram_commands(config):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram bot token or chat ID not set. Skipping Telegram command check.")
         return config
 
     # Register bot menu commands so they show up in Telegram UI autocomplete
     register_telegram_commands()
 
-    response = telegram_request(
-        "getUpdates",
-        params={"offset": config.get("offset", 0) + 1, "timeout": 0},
-    )
+    offset = config.get("offset")
+    params = {"timeout": 0}
+    if offset and isinstance(offset, int) and offset > 0:
+        params["offset"] = offset + 1
+
+    print(f"Checking Telegram updates (offset={offset})...")
+    response = telegram_request("getUpdates", params=params)
     if response.get("error_code") == 409:
         telegram_request("deleteWebhook", params={"drop_pending_updates": False})
-        response = telegram_request(
-            "getUpdates",
-            params={"offset": config.get("offset", 0) + 1, "timeout": 0},
-        )
+        response = telegram_request("getUpdates", params=params)
+
     updates = response.get("result", [])
+    print(f"Telegram updates fetched: {len(updates)}")
+
+    expected_chat_id = str(TELEGRAM_CHAT_ID).strip().strip('"').strip("'")
+
     for update in updates:
         config["offset"] = update["update_id"]
-        message = update.get("message", {})
-        chat_id = str(message.get("chat", {}).get("id", ""))
-        if chat_id != TELEGRAM_CHAT_ID:
+        message = (
+            update.get("message")
+            or update.get("edited_message")
+            or update.get("channel_post")
+            or update.get("edited_channel_post")
+            or {}
+        )
+        chat_id = str(message.get("chat", {}).get("id", "")).strip()
+        text = (message.get("text") or message.get("caption") or "").strip()
+        if not text:
             continue
-        parts = message.get("text", "").strip().split()
-        if not parts:
+
+        if chat_id != expected_chat_id:
+            print(f"Ignoring message from chat {chat_id} (expected {expected_chat_id})")
             continue
+
+        print(f"Received Telegram command: {text}")
+        parts = text.split()
         command = parts[0].split("@", 1)[0].lower()
         args = parts[1:]
         reply = None
@@ -285,7 +302,8 @@ def process_telegram_commands(config):
                 reply = "❌ Invalid format. Use:\n/set 15-Oct-2026 16-Oct-2026 10:00 16:00"
 
         if reply:
-            send_telegram_message(chat_id, reply)
+            ok = send_telegram_message(chat_id, reply)
+            print(f"Sent reply to chat {chat_id} (success={ok})")
 
     save_config(config)
     return config
