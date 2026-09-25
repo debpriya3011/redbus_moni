@@ -23,6 +23,16 @@ DATES = [
 
 FROM_CITY = "75494"
 TO_CITY = "94698"
+FROM_CITY_NAME = "kolkata"
+TO_CITY_NAME = "bankura"
+
+
+def generate_booking_url(journey_date):
+    return (
+        f"https://www.redbus.in/bus-tickets/{FROM_CITY_NAME}-to-{TO_CITY_NAME}"
+        f"?fromCityId={FROM_CITY}&toCityId={TO_CITY}&doj={journey_date}"
+    )
+
 
 START_TIME = "10:00"
 END_TIME = "16:00"
@@ -246,6 +256,7 @@ def get_current_buses_summary():
             fares = bus.get("fareList", [])
             fare_str = f"₹{fares[0]}" if fares else "N/A"
             summary_lines.append(f"  • {dep} - {name} ({seats_str} seats, {fare_str})")
+        summary_lines.append(f"  🔗 Book: {generate_booking_url(date)}\n")
 
     return "\n".join(summary_lines) if summary_lines else "  No matching buses stored in state yet."
 
@@ -493,8 +504,8 @@ def send_telegram_notification(current_state, changed_buses=None):
                     f"  🚌 {service_name}",
                     f"  🕐 {dep} ➡️ {arr}",
                     f"  💺 Seats: {seat_str} | 💰 Fare: {fare}",
-                    "",
                 ])
+            lines.append(f"  🔗 Book on RedBus: {generate_booking_url(journey_date)}\n")
 
     if not has_any_buses:
         lines.append("ℹ️ No matching buses found in this departure window currently.")
