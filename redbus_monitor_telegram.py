@@ -123,10 +123,17 @@ def process_telegram_commands(config):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return config
 
-    updates = telegram_request(
+    response = telegram_request(
         "getUpdates",
         params={"offset": config.get("offset", 0) + 1, "timeout": 0},
-    ).get("result", [])
+    )
+    if response.get("error_code") == 409:
+        telegram_request("deleteWebhook", params={"drop_pending_updates": False})
+        response = telegram_request(
+            "getUpdates",
+            params={"offset": config.get("offset", 0) + 1, "timeout": 0},
+        )
+    updates = response.get("result", [])
     for update in updates:
         config["offset"] = update["update_id"]
         message = update.get("message", {})
@@ -1076,6 +1083,7 @@ def main():
     for journey_date in DATES:
 
         try:
+            old_buses = previous_state.get(journey_date, {})
 
             (
                 previous_state,
@@ -1091,10 +1099,13 @@ def main():
                 successful_dates += 1
 
                 if current_buses:
-
-                    available_buses[journey_date] = (
-                        current_buses
-                    )
+                    changed_buses = {
+                        key: bus for key, bus in current_buses.items()
+                        if key not in old_buses
+                        or compare_bus(old_buses[key], bus)
+                    }
+                    if changed_buses:
+                        available_buses[journey_date] = changed_buses
 
         except Exception as e:
 
