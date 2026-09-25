@@ -86,8 +86,10 @@ def telegram_request(method, **kwargs):
     if not TELEGRAM_BOT_TOKEN:
         return {}
     try:
-        response = session.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}",
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}"
+        request = session.get if method == "getUpdates" else session.post
+        response = request(
+            url,
             timeout=30,
             **kwargs,
         )
