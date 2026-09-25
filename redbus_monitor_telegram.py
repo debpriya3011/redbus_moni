@@ -253,6 +253,7 @@ def process_telegram_commands(config):
 
     expected_chat_id = str(TELEGRAM_CHAT_ID).strip().strip('"').strip("'")
     seen_commands_in_batch = set()
+    replies = []
 
     for update in updates:
         config["offset"] = update["update_id"]
@@ -371,9 +372,18 @@ def process_telegram_commands(config):
             else:
                 reply = "❌ Invalid format. Use:\n/set 15-Oct-2026 16-Oct-2026 10:00 16:00"
 
-        if reply:
-            ok = send_telegram_message(chat_id, reply)
-            print(f"Sent reply to chat {chat_id} (success={ok})")
+        if reply and reply not in replies:
+            replies.append(reply)
+
+    if replies:
+        # If there are success messages, filter out intermediate "Please specify..." prompts
+        has_success = any("✅" in r or "📊" in r for r in replies)
+        if has_success:
+            replies = [r for r in replies if not r.startswith("ℹ️ Please specify")]
+
+        combined_reply = "\n\n───────────────\n\n".join(replies)
+        ok = send_telegram_message(expected_chat_id, combined_reply)
+        print(f"Sent consolidated reply to chat {expected_chat_id} (success={ok})")
 
     save_config(config)
     return config
