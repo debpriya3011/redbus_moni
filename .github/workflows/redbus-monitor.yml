@@ -50,12 +50,18 @@ jobs:
           else
             git commit -m "Update RedBus monitor state"
             for attempt in 1 2 3; do
-              git fetch origin main
-              git rebase -X theirs origin/main
+              if ! git fetch origin main; then
+                echo "Fetch attempt $attempt failed; retrying."
+                continue
+              fi
+              if ! git rebase -X theirs origin/main; then
+                git rebase --abort || true
+                echo "Rebase attempt $attempt failed; retrying."
+                continue
+              fi
               if git push origin HEAD:main; then
                 exit 0
               fi
-              git rebase --abort || true
               echo "Push attempt $attempt failed; retrying."
             done
             echo "Could not push monitor state after 3 attempts."
