@@ -2,7 +2,7 @@ name: RedBus Monitor
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "* * * * *"
   workflow_dispatch:
 
 permissions:
