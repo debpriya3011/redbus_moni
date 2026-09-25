@@ -106,19 +106,37 @@ def register_telegram_commands():
     if not TELEGRAM_BOT_TOKEN:
         return
     commands = [
-        {"command": "status", "description": "View current dates and departure window"},
-        {"command": "dates", "description": "Set/view dates: /dates 15-Oct-2026 16-Oct-2026"},
-        {"command": "add_date", "description": "Add date(s): /add_date 17-Oct-2026"},
-        {"command": "remove_date", "description": "Remove date(s): /remove_date 15-Oct-2026"},
+        {"command": "status", "description": "Check current status and buses"},
+        {"command": "dates", "description": "View or set journey dates"},
+        {"command": "add_date", "description": "Add date: /add_date 17-Oct-2026"},
+        {"command": "remove_date", "description": "Remove date: /remove_date 15-Oct-2026"},
         {"command": "time", "description": "Set departure time: /time 10:00 16:00"},
         {"command": "set", "description": "Set all: /set 15-Oct-2026 10:00 16:00"},
         {"command": "help", "description": "Show help and usage guide"},
     ]
     telegram_request("setMyCommands", json={"commands": commands})
+    telegram_request("setChatMenuButton", json={"menu_button": {"type": "commands"}})
 
 
-def send_telegram_message(chat_id, text):
-    return telegram_request("sendMessage", data={"chat_id": chat_id, "text": text}).get("ok", False)
+KEYBOARD_MARKUP = {
+    "keyboard": [
+        [{"text": "📊 Status & Buses"}, {"text": "📅 View Dates"}],
+        [{"text": "⏰ Departure Window"}, {"text": "ℹ️ Help & Guide"}]
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True
+}
+
+
+def send_telegram_message(chat_id, text, reply_markup=None):
+    if reply_markup is None:
+        reply_markup = KEYBOARD_MARKUP
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "reply_markup": json.dumps(reply_markup)
+    }
+    return telegram_request("sendMessage", data=payload).get("ok", False)
 
 
 def parse_single_date(value):
@@ -255,10 +273,26 @@ def process_telegram_commands(config):
             continue
 
         print(f"Received Telegram command: {text}")
+        lower_text = text.lower().strip()
         parts = text.split()
-        command = parts[0].split("@", 1)[0].lower()
+        raw_cmd = parts[0].split("@", 1)[0].lower()
         args = parts[1:]
         reply = None
+
+        if "status" in lower_text or "buses" in lower_text:
+            command = "/status"
+            args = []
+        elif "view dates" in lower_text:
+            command = "/dates"
+            args = []
+        elif "departure window" in lower_text:
+            command = "/time"
+            args = []
+        elif "help" in lower_text or "guide" in lower_text or raw_cmd == "/start":
+            command = "/help"
+            args = []
+        else:
+            command = raw_cmd
 
         cmd_key = (command, " ".join(args))
         if cmd_key in seen_commands_in_batch:
