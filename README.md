@@ -55,7 +55,21 @@ Go to your GitHub repository ➔ **Settings** ➔ **Secrets and variables** ➔ 
 In GitHub ➔ **Settings** ➔ **Actions** ➔ **General** ➔ **Workflow permissions**:
 - Select **Read and write permissions** (allows the workflow to commit state updates back to `state.json` and `config.json`).
 
-### 4. Running Locally (Optional)
+### 4. Optional: Cloudflare Cron Trigger (Instant Execution)
+GitHub Actions cron triggers can sometimes experience 5–15 minute delays during peak hours. You can use Cloudflare Workers Cron Triggers to trigger the workflow with exact minute precision.
+
+1. Create a GitHub Personal Access Token (PAT):
+   - Go to **GitHub Settings** ➔ **Developer settings** ➔ **Personal access tokens** ➔ **Fine-grained tokens**.
+   - Create a token with **Contents** and **Actions** read/write permissions for your repository.
+2. Go to **Cloudflare Dashboard** ➔ **Workers & Pages** ➔ **Create Worker**.
+3. Paste the contents of [`cloudflare_worker.js`](./cloudflare_worker.js).
+4. In Worker **Settings** ➔ **Variables and Secrets**, add:
+   - `GITHUB_OWNER`: your GitHub username
+   - `GITHUB_REPO`: `redbus-monitor`
+   - `GITHUB_PAT`: your GitHub Personal Access Token
+5. In Worker **Settings** ➔ **Triggers**, add a **Cron Trigger** (e.g. `*/5 * * * *` for every 5 minutes).
+
+### 5. Running Locally (Optional)
 ```bash
 pip install -r requirements.txt
 
