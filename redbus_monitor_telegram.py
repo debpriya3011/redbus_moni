@@ -153,19 +153,12 @@ def register_telegram_commands():
     telegram_request("setChatMenuButton", json={"menu_button": {"type": "commands"}})
 
 
-# KEYBOARD_MARKUP = {
-#     "keyboard": [
-#         [{"text": "📊 Status & Buses"}, {"text": "📅 View Dates"}],
-#         [{"text": "⏰ Departure Window"}, {"text": "ℹ️ Help & Guide"}]
-#     ],
-#     "resize_keyboard": True,
-#     "is_persistent": True
-# }
+REMOVE_KEYBOARD = {"remove_keyboard": True}
 
 
 def send_telegram_message(chat_id, text, reply_markup=None, parse_mode="HTML"):
-    # if reply_markup is None:
-    #     reply_markup = KEYBOARD_MARKUP
+    if reply_markup is None:
+        reply_markup = REMOVE_KEYBOARD
     payload = {
         "chat_id": str(chat_id).strip(),
         "text": text,
@@ -541,7 +534,7 @@ def send_telegram_notification(current_state, changed_buses=None):
     payload = {
         "chat_id": str(TELEGRAM_CHAT_ID).strip(),
         "text": message,
-        # "reply_markup": KEYBOARD_MARKUP,
+        "reply_markup": REMOVE_KEYBOARD,
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
