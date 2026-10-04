@@ -96,7 +96,7 @@
       "fareList": [
         185
       ],
-      "availableSeats": 2,
+      "availableSeats": 1,
       "totalSeats": 54,
       "availableWindowSeats": null,
       "availableAisleSeats": null,
@@ -124,7 +124,7 @@
       "fareList": [
         185
       ],
-      "availableSeats": 7,
+      "availableSeats": 6,
       "totalSeats": 54,
       "availableWindowSeats": null,
       "availableAisleSeats": 1,
