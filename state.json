@@ -96,9 +96,9 @@
       "fareList": [
         185
       ],
-      "availableSeats": 13,
+      "availableSeats": 12,
       "totalSeats": 54,
-      "availableWindowSeats": 2,
+      "availableWindowSeats": 1,
       "availableAisleSeats": 3,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
@@ -124,41 +124,15 @@
       "fareList": [
         185
       ],
-      "availableSeats": 22,
+      "availableSeats": 18,
       "totalSeats": 54,
-      "availableWindowSeats": 4,
-      "availableAisleSeats": 9,
+      "availableWindowSeats": 2,
+      "availableAisleSeats": 8,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
       "busTypeId": 1756,
       "isRtc": true,
       "isNonAc": true,
-      "isSeater": true,
-      "isMticketEnabled": true
-    },
-    "KMOYE AC DAY-D/12-00|38234579|2026-10-16 15:15:00": {
-      "journeyDate": "16-Oct-2026",
-      "travelsName": "SBSTC-KARUNAMOYEE-BANKURA A/C 15:15  (BNK DEPOT)",
-      "serviceName": "KARUNAMOYEE-BANKURA A/C 15:15  (BNK DEPOT)",
-      "serviceId": "KMOYE AC DAY-D/12-00",
-      "routeId": 38234579,
-      "operatorId": 32272,
-      "busType": "A/C Seater (2+2)",
-      "departureTime": "2026-10-16 15:15:00",
-      "arrivalTime": "2026-10-16 20:45:00",
-      "journeyDurationMin": 330,
-      "fareList": [
-        360
-      ],
-      "availableSeats": 2,
-      "totalSeats": 37,
-      "availableWindowSeats": null,
-      "availableAisleSeats": null,
-      "standardBpName": "Karunamoyee",
-      "standardDpName": "BANKURA",
-      "busTypeId": 304,
-      "isRtc": true,
-      "isNonAc": null,
       "isSeater": true,
       "isMticketEnabled": true
     }
