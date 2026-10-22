@@ -14,9 +14,9 @@
       "fareList": [
         185
       ],
-      "availableSeats": 37,
+      "availableSeats": 36,
       "totalSeats": 54,
-      "availableWindowSeats": 10,
+      "availableWindowSeats": 9,
       "availableAisleSeats": 13,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
@@ -124,10 +124,10 @@
       "fareList": [
         185
       ],
-      "availableSeats": 50,
+      "availableSeats": 42,
       "totalSeats": 54,
-      "availableWindowSeats": 17,
-      "availableAisleSeats": 17,
+      "availableWindowSeats": 12,
+      "availableAisleSeats": 15,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
       "busTypeId": 1756,
@@ -150,10 +150,10 @@
       "fareList": [
         360
       ],
-      "availableSeats": 37,
+      "availableSeats": 2,
       "totalSeats": 37,
-      "availableWindowSeats": 16,
-      "availableAisleSeats": 16,
+      "availableWindowSeats": null,
+      "availableAisleSeats": null,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
       "busTypeId": 304,
