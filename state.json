@@ -14,10 +14,10 @@
       "fareList": [
         185
       ],
-      "availableSeats": 18,
+      "availableSeats": 16,
       "totalSeats": 54,
       "availableWindowSeats": 1,
-      "availableAisleSeats": 6,
+      "availableAisleSeats": 4,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
       "busTypeId": 1756,
