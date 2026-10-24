@@ -1,31 +1,5 @@
 {
   "24-Oct-2026": {
-    "KMOYE 1-D/12-00|38231590|2026-10-24 12:00:00": {
-      "journeyDate": "24-Oct-2026",
-      "travelsName": "SBSTC-KARUNAMOYEE - BANKURA VIA DURGAPUR  12:00 (BNK DEPOT)",
-      "serviceName": "KARUNAMOYEE - BANKURA VIA DURGAPUR  12:00 (BNK DEPOT)",
-      "serviceId": "KMOYE 1-D/12-00",
-      "routeId": 38231590,
-      "operatorId": 32272,
-      "busType": "Express(Non AC Seater)",
-      "departureTime": "2026-10-24 12:00:00",
-      "arrivalTime": "2026-10-24 17:30:00",
-      "journeyDurationMin": 330,
-      "fareList": [
-        185
-      ],
-      "availableSeats": 13,
-      "totalSeats": 54,
-      "availableWindowSeats": 1,
-      "availableAisleSeats": 4,
-      "standardBpName": "Karunamoyee",
-      "standardDpName": "BANKURA",
-      "busTypeId": 1756,
-      "isRtc": true,
-      "isNonAc": true,
-      "isSeater": true,
-      "isMticketEnabled": true
-    },
     "KMOYE 2-D/14-30|38012566|2026-10-24 14:30:00": {
       "journeyDate": "24-Oct-2026",
       "travelsName": "SBSTC-KARUNAMOYEE - BANKURA VIA DURGAPUR 14:30 (BNK DEPOT)",
@@ -40,10 +14,10 @@
       "fareList": [
         185
       ],
-      "availableSeats": 31,
+      "availableSeats": 30,
       "totalSeats": 54,
       "availableWindowSeats": 5,
-      "availableAisleSeats": 13,
+      "availableAisleSeats": 12,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
       "busTypeId": 1756,
