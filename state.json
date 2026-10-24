@@ -74,7 +74,7 @@
       "availableSeats": 1,
       "totalSeats": 37,
       "availableWindowSeats": null,
-      "availableAisleSeats": 1,
+      "availableAisleSeats": null,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
       "busTypeId": 304,
