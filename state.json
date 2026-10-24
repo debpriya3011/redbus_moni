@@ -71,9 +71,9 @@
       "fareList": [
         360
       ],
-      "availableSeats": 2,
+      "availableSeats": 1,
       "totalSeats": 37,
-      "availableWindowSeats": 1,
+      "availableWindowSeats": null,
       "availableAisleSeats": 1,
       "standardBpName": "Karunamoyee",
       "standardDpName": "BANKURA",
