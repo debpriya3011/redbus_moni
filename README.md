@@ -4,7 +4,7 @@ An automated, serverless bus seat monitor and interactive Telegram bot that trac
 
 ---
 
-## ✨ Features
+## ✨ Feature
 
 - ⏰ **Automated Hourly Monitoring**: Runs every 1 hour via GitHub Actions with zero server maintenance.
 - 💺 **Real-Time Seat Breakdown**: Tracks total available seats, window seats (🪟), and aisle seats (🚶).
