@@ -1,4 +1,4 @@
-# 🚌 RedBus Route Monitor & Telegram Bot
+# RedBus Route Monitor & Telegram Bot
 
 An automated, serverless bus seat monitor and interactive Telegram bot that tracks real-time RedBus inventory, seat availability (including window & aisle seat breakdown), and fare updates for specific routes and dates.
 
